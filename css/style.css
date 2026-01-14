@@ -92,8 +92,9 @@ h3,
     font-family: 'Orbitron', sans-serif;
     text-transform: uppercase;
     letter-spacing: 2px;
-    color: var(--primary-neon);
-    text-shadow: 0 0 10px rgba(0, 243, 255, 0.7);
+    color: #000 !important;
+    /* Black Text */
+    text-shadow: none !important;
 }
 
 /* --- Glassmorphism Cards --- */
@@ -101,15 +102,15 @@ h3,
 .cardstyle,
 .fixedcardstyle,
 .mycardstyle {
-    background: var(--glass-bg);
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
-    border: var(--glass-border);
-    box-shadow: 0 0 20px rgba(0, 243, 255, 0.1), inset 0 0 20px rgba(0, 243, 255, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     border-radius: 15px;
     padding: 30px;
     width: 60%;
     margin: 30px auto;
-    color: white;
+    color: #000 !important;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -298,7 +299,9 @@ h3,
 .formlabel {
     margin-top: 15px;
     display: block;
-    color: rgba(255, 255, 255, 0.7);
+    color: #000 !important;
+    /* Black Label */
+    font-weight: bold;
 }
 
 .col-md-5 {
@@ -334,17 +337,12 @@ main,
     }
 }
 
-::placeholder {
-    color: rgba(0, 243, 255, 0.5);
-    font-family: 'Rajdhani', sans-serif;
-}
-
 /* Ensure inputs are visible and always use the new theme */
 .forminput,
 .formselect {
-    background: rgba(10, 20, 30, 0.8) !important;
-    border: 1px solid var(--primary-neon) !important;
-    color: white !important;
+    background: #fff !important;
+    border: 1px solid #333 !important;
+    color: #000 !important;
     font-family: 'Orbitron', monospace;
     padding: 12px;
     border-radius: 5px;
@@ -353,6 +351,11 @@ main,
     /* Fix width */
     margin-bottom: 15px;
     /* Add spacing */
+}
+
+::placeholder {
+    color: #555 !important;
+    opacity: 1;
 }
 
 .forminput:focus,

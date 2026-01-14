@@ -29,12 +29,20 @@ if (!IS_VERCEL) {
     db = {
         users: [],
         get: (query, params, callback) => {
-            // Simple mock for login
+            // Universal Mock Login for Vercel Demo
+            // Accepts ANY credentials to prevent "Database Error" on serverless restart
             const email = params[0];
             const pw = params[1];
-            // Start with a default user
-            const defaultUser = { email: 'demo@demo.com', password: md5('demo'), role: 0, username: 'DemoUser' };
-            const user = db.users.find(u => u.email === email && u.password === pw) || (email === defaultUser.email && pw === defaultUser.password ? defaultUser : null);
+
+            // Create a mock user based on input
+            const user = {
+                email: email,
+                password: pw,
+                role: 0, // Default to Manufacturer/Consumer for demo
+                username: 'DemoUser'
+            };
+
+            console.log("Mock DB: Universal Login Success for", email);
             callback(null, user);
         },
         run: (query, params, callback) => {
@@ -169,6 +177,7 @@ app.post('/registration', (req, res) => {
             res.render('index', { role: undefined, error: "Registration failed." });
         } else {
             if (IS_VERCEL) {
+                // For Vercel, loop directly to login/checkproducts
                 req.session.role = role;
                 req.session.username = username;
                 req.session.email = email;
@@ -183,7 +192,7 @@ app.get('/checkproducts', (req, res) => {
     if (req.session.role === undefined) {
         res.redirect('/');
     } else {
-        res.render('checkproducts', { role: req.session.role });
+        res.render('checkproducts', { role: req.session.role, result: null });
     }
 });
 
@@ -208,38 +217,37 @@ app.get('/profile', (req, res) => {
 
 app.post('/checkproducts', (req, res) => {
     // Mock Verification Logic for Vercel Demo
-    console.log("Checking Product:", req.body);
+    const productCode = req.body.productCode;
+    console.log("Checking Product:", productCode);
 
     if (IS_VERCEL) {
-        // Simple mock response to render the page with a result
-        // We render 'checkproducts' again but pass variables to show the result
-        // Since we don't have the original template logic for "result" yet, we might need to update the EJS too.
-        // For now, let's send a simple alert script or text to confirm connection.
+        const isReal = (productCode === '12345' || productCode === 'REAL');
 
-        // Actually, let's see what the EJS expects.
-        // If I just send text, it's a bad UX.
-        // Let's assume the user just wants to see *something* happen.
+        let resultData = null;
+        if (isReal) {
+            resultData = {
+                id: productCode,
+                name: "Genuine Leather Bag (Demo)",
+                description: "Authentic premium leather product. Verified on Blockchain.",
+                manufactureDate: "2026-01-10",
+                expiryDate: "N/A",
+                owner: "Demo User",
+                status: "Real Product",
+                isReal: true
+            };
+        } else {
+            resultData = {
+                id: productCode,
+                name: "Unknown Product",
+                description: "This product code does not exist in the blockchain registry.",
+                status: "Fake Product",
+                isReal: false
+            };
+        }
 
-        const result = {
-            id: 1,
-            name: "Demo Product",
-            description: "This is a verified demo product.",
-            manufactureDate: "2026-01-01",
-            expiryDate: "2028-01-01",
-            owner: "Demo User",
-            isReal: true
-        };
+        // Render the EJS template with the result
+        res.render('checkproducts', { role: req.session.role || 0, result: resultData });
 
-        // Render the page with the result data
-        // Note: I need to check checkproducts.ejs to see what invalid/valid variables it uses.
-        // For safety, I'll send a basic response first.
-        res.send(`
-            <div style="font-family: sans-serif; padding: 20px; text-align: center; background: #0f0; color: #000;">
-                <h1>Product Verified! (Demo Mode)</h1>
-                <p>This is a valid product simulation.</p>
-                <a href="/checkproducts">Check Another</a>
-            </div>
-        `);
     } else {
         res.send("Blockchain verification unavailable in this environment.");
     }

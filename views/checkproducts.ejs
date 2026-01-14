@@ -18,6 +18,7 @@
 </head>
 <% if (role !==undefined) { %>
 
+
     <body class="violetgradient">
         <%- include('partials/navbar') %>
             <center>
@@ -33,9 +34,11 @@
             <div>
                 <center>
                     <div class="centered">
-                        <form role="form" autocomplete="off">
-                            <input type="text" id="searchText" class="searchBox" placeholder="Enter Product Code"
-                                onkeypress="isInputNumber(event)" required>
+                        <!-- Search Form -->
+                        <form role="form" autocomplete="off" action="/checkproducts" method="POST">
+                            <input type="text" id="searchText" name="productCode" class="searchBox"
+                                placeholder="Enter Product Code" required
+                                value="<%= (typeof result !== 'undefined' && result) ? result.id : '' %>">
                             <label class=qrcode-text-btn style="width:4%;display:none;">
                                 <input type=file accept="image/*" id="selectedFile" style="display:none"
                                     capture=environment onchange="openQRCamera(this);" tabindex=-1>
@@ -45,13 +48,45 @@
                         </form>
 
                         <button class="qrbutton" onclick="document.getElementById('selectedFile').click();">
-                            <i class='fa fa-qrcode'></i> Scan QR
+                            <i class='fa fa-qrcode'></i> Scan QR / Paste Image
                         </button>
 
                         <br><br>
-                        <p id="database" class="cardstyle">
-                            Fake Product
-                        </p>
+
+                        <!-- Result Display Logic -->
+                        <% if (typeof result !=='undefined' && result) { %>
+                            <div class="cardstyle"
+                                style="display: block; background: <%= result.isReal ? '#d4edda' : '#f8d7da' %>; color: <%= result.isReal ? '#155724' : '#721c24' %>;">
+                                <h3 style="color: inherit !important;">
+                                    <%= result.status %>
+                                </h3>
+                                <hr>
+                                <div style="text-align: left; padding: 10px;">
+                                    <p><strong>Code:</strong>
+                                        <%= result.id %>
+                                    </p>
+                                    <p><strong>Name:</strong>
+                                        <%= result.name %>
+                                    </p>
+                                    <p><strong>Description:</strong>
+                                        <%= result.description %>
+                                    </p>
+                                    <% if(result.isReal) { %>
+                                        <p><strong>Manufactured:</strong>
+                                            <%= result.manufactureDate %>
+                                        </p>
+                                        <p><strong>Owner:</strong>
+                                            <%= result.owner %>
+                                        </p>
+                                        <% } %>
+                                </div>
+                            </div>
+                            <% } else { %>
+                                <!-- Hidden default card for client-side web3 only -->
+                                <p id="database" class="cardstyle" style="display:none;">
+                                </p>
+                                <% } %>
+
                     </div>
                 </center>
             </div>
@@ -73,78 +108,91 @@
                     <script src="js/bootstrap.min.js"></script>
                     <script src="js/mdb.min.js"></script>
 
-
-                    <script src="web3.min.js"></script>
-                    <script src="app.js"></script>
-
-                    <!-- QR Code Reader -->
-                    <script src="https://rawgit.com/sitepoint-editors/jsqrcode/master/src/qr_packed.js"></script>
-
                     <!-- Web3 Injection -->
-                    <script>
-                        // Allow fallback if 7545 not running
-                        web3 = new Web3(new Web3.providers.HttpProvider('HTTP://127.0.0.1:7545'));
-
-                        // Set the Contract
-                        var contract = new web3.eth.Contract(contractAbi, contractAddress);
-
-
-                        $(".cardstyle").hide();
-                        // Change the Data
-                        $('form').on('submit', function (event) {
-                            event.preventDefault(); // to prevent page reload when form is submitted
-                            greeting = $('input').val();
-                            console.log(greeting)
-                            //$("#database").text(greeting);
-
-                            contract.methods.searchProduct(greeting).call(function (err, result) {
-                                console.log(err, result)
-                                $(".cardstyle").show("fast", "linear");
-                                $("#database").html(result);
-                            });
-                        });
-
-
-                        function isInputNumber(evt) {
-                            var ch = String.fromCharCode(evt.which);
-                            if (!(/[0-9]/.test(ch))) {
-                                evt.preventDefault();
+                    <!-- Only load Web3 if NOT showing a server result (Hybrid support) -->
+                    <% if (typeof result==='undefined' || !result) { %>
+                        <script src="web3.min.js"></script>
+                        <script src="app.js"></script>
+                        <script>
+                            // Standard Web3 Logic for Local/MetaMask
+                            if (typeof web3 !== 'undefined') {
+                                web3 = new Web3(new Web3.providers.HttpProvider('HTTP://127.0.0.1:7545'));
                             }
-                        }
+                        </script>
+                        <% } %>
 
-                        $("#closebutton").on("click", function () {
-                            $(".customalert").hide("fast", "linear");
-                        });
+                            <!-- QR Code Reader -->
+                            <script
+                                src="https://rawgit.com/sitepoint-editors/jsqrcode/master/src/qr_packed.js"></script>
 
-                        function openQRCamera(node) {
-                            var reader = new FileReader();
-                            reader.onload = function () {
-                                node.value = "";
-                                qrcode.callback = function (res) {
-                                    if (res instanceof Error) {
-                                        alert("No QR code found. Please make sure the QR code is within the camera's frame and try again.");
-                                    } else {
-                                        node.parentNode.previousElementSibling.value = res;
-                                        document.getElementById('searchButton').click();
+                            <script>
+                                function isInputNumber(evt) {
+                                    var ch = String.fromCharCode(evt.which);
+                                    if (!(/[0-9]/.test(ch))) {
+                                        evt.preventDefault();
                                     }
-                                };
-                                qrcode.decode(reader.result);
-                            };
-                            reader.readAsDataURL(node.files[0]);
-                        }
+                                }
 
-                        function showAlert(message) {
-                            $("#alertText").html(message);
-                            $("#qrious").hide();
-                            $("#bottomText").hide();
-                            $(".customalert").show("fast", "linear");
-                        }
+                                $("#closebutton").on("click", function () {
+                                    $(".customalert").hide("fast", "linear");
+                                });
 
-                        $("#aboutbtn").on("click", function () {
-                            showAlert("P2P Ownership Verification against Fake Products ");
-                        });
+                                function openQRCamera(node) {
+                                    var reader = new FileReader();
+                                    reader.onload = function () {
+                                        node.value = "";
+                                        qrcode.callback = function (res) {
+                                            if (res instanceof Error) {
+                                                alert("No QR code found. Please make sure the QR code is within the camera's frame and try again.");
+                                            } else {
+                                                // node.parentNode.previousElementSibling.value = res;
+                                                document.getElementById('searchText').value = res;
+                                                document.getElementById('searchButton').click();
+                                            }
+                                        };
+                                        qrcode.decode(reader.result);
+                                    };
+                                    reader.readAsDataURL(node.files[0]);
+                                }
 
-                    </script>
+                                // Copy-Paste Support for QR Images
+                                window.addEventListener('paste', e => {
+                                    const fileInput = document.getElementById('selectedFile');
+                                    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                                    for (let index in items) {
+                                        const item = items[index];
+                                        if (item.kind === 'file') {
+                                            const blob = item.getAsFile();
+                                            const reader = new FileReader();
+                                            reader.onload = function (event) {
+                                                qrcode.callback = function (res) {
+                                                    if (res instanceof Error) {
+                                                        alert("No QR code found in pasted image.");
+                                                    } else {
+                                                        document.getElementById('searchText').value = res;
+                                                        document.getElementById('searchButton').click();
+                                                    }
+                                                }
+                                                qrcode.decode(event.target.result);
+                                            };
+                                            reader.readAsDataURL(blob);
+                                        }
+                                    }
+                                });
+
+
+                                function showAlert(message) {
+                                    $("#alertText").html(message);
+                                    $("#qrious").hide();
+                                    $("#bottomText").hide();
+                                    $(".customalert").show("fast", "linear");
+                                }
+
+                                $("#aboutbtn").on("click", function () {
+                                    showAlert("P2P Ownership Verification against Fake Products ");
+                                });
+
+                            </script>
     </body>
 
 </html>

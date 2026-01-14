@@ -1,24 +1,69 @@
 const express = require('express');
 const session = require('express-session');
 const bodyParser = require('body-parser');
-const db = require('./database');
 const path = require('path');
 const md5 = require('md5');
-const ganache = require("ganache");
-const Web3 = require("web3");
 const fs = require("fs");
-const solc = require("solc");
+
+// Detect if running on Vercel or standard local environment
+const IS_VERCEL = process.env.VERCEL || process.env.NODE_ENV === 'production';
+
+// Conditional imports for Local Development only
+let db;
+let ganache;
+let Web3;
+let solc;
+
+if (!IS_VERCEL) {
+    try {
+        const sqlite3 = require('sqlite3').verbose();
+        db = new sqlite3.Database('./supplychain.db');
+        ganache = require("ganache");
+        Web3 = require("web3");
+        solc = require("solc");
+    } catch (e) {
+        console.log("Optional dependencies missing, falling back to mock mode.");
+    }
+} else {
+    // Mock DB for Vercel (In-Memory) to prevent Read-Only File System errors
+    db = {
+        users: [],
+        get: (query, params, callback) => {
+            // Simple mock for login
+            const email = params[0];
+            const pw = params[1];
+            // Start with a default user
+            const defaultUser = { email: 'demo@demo.com', password: md5('demo'), role: 0, username: 'DemoUser' };
+            const user = db.users.find(u => u.email === email && u.password === pw) || (email === defaultUser.email && pw === defaultUser.password ? defaultUser : null);
+            callback(null, user);
+        },
+        run: (query, params, callback) => {
+            // Simple mock for registration
+            db.users.push({
+                email: params[0],
+                username: params[1],
+                password: params[2],
+                role: params[3]
+            });
+            console.log("Mock DB: User Registered", params[0]);
+            callback(null);
+        }
+    };
+}
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-// Ganache Setup
-const ganacheOptions = {
-    logging: { quiet: true }
-};
-const ganacheServer = ganache.server(ganacheOptions);
+// Ganache Setup (Skipped on Vercel)
+const ganacheOptions = { logging: { quiet: true } };
+let ganacheServer = (!IS_VERCEL && ganache) ? ganache.server(ganacheOptions) : null;
 
 async function setupBlockchain() {
+    if (IS_VERCEL || !ganacheServer) {
+        console.log("Skipping Blockchain Setup (Vercel/Lite Mode)");
+        return;
+    }
+
     return new Promise((resolve, reject) => {
         ganacheServer.listen(7545, async (err) => {
             if (err) return reject(err);
@@ -36,18 +81,8 @@ async function setupBlockchain() {
                 // Compile Contract (Simple solc usage)
                 var input = {
                     language: 'Solidity',
-                    sources: {
-                        'smartcontract.sol': {
-                            content: contractSource
-                        }
-                    },
-                    settings: {
-                        outputSelection: {
-                            '*': {
-                                '*': ['*']
-                            }
-                        }
-                    }
+                    sources: { 'smartcontract.sol': { content: contractSource } },
+                    settings: { outputSelection: { '*': { '*': ['*'] } } }
                 };
 
                 const output = JSON.parse(solc.compile(JSON.stringify(input)));
@@ -56,13 +91,8 @@ async function setupBlockchain() {
 
                 // Deploy
                 const contract = new web3.eth.Contract(contractABI);
-                const deployedContract = await contract.deploy({
-                    data: contractBytecode
-                }).send({
-                    from: deployerAccount,
-                    gas: 1500000,
-                    gasPrice: '30000000000'
-                });
+                const deployedContract = await contract.deploy({ data: contractBytecode })
+                    .send({ from: deployerAccount, gas: 1500000, gasPrice: '30000000000' });
 
                 console.log("Contract deployed at address:", deployedContract.options.address);
 
@@ -70,11 +100,8 @@ async function setupBlockchain() {
                 let appJspath = path.join(__dirname, 'app.js');
                 let appJsContent = fs.readFileSync(appJspath, 'utf8');
 
-                // Update Address
+                // Update Address & ABI
                 appJsContent = appJsContent.replace(/var contractAddress ='.*';/, `var contractAddress ='${deployedContract.options.address}';`);
-
-                // Update ABI
-                // We need to inject the new ABI as well just in case
                 const abiString = JSON.stringify(contractABI, null, 2);
                 appJsContent = appJsContent.replace(/var contractAbi =\[[\s\S]*?\];/, `var contractAbi =${abiString};`);
 
@@ -84,7 +111,7 @@ async function setupBlockchain() {
                 resolve();
             } catch (e) {
                 console.error("Error deploying contract:", e);
-                resolve(); // Continue anyway
+                resolve();
             }
         });
     });
@@ -116,6 +143,7 @@ app.post('/login', (req, res) => {
 
     db.get("SELECT * FROM users WHERE email = ? AND password = ?", [email, password], (err, row) => {
         if (err) {
+            console.error(err);
             res.render('index', { role: undefined, error: "Database error" });
         } else if (row) {
             req.session.role = row.role;
@@ -131,15 +159,20 @@ app.post('/login', (req, res) => {
 app.post('/registration', (req, res) => {
     const email = req.body.email;
     const username = req.body.username;
-    const password = md5(req.body.pw); // Note: original code used 'pw', check form field name
+    const password = md5(req.body.pw);
     const role = req.body.role;
 
-    // Check if user exists? Simple prototype implementation
     db.run("INSERT INTO users (email, username, password, role) VALUES (?, ?, ?, ?)", [email, username, password, role], function (err) {
         if (err) {
-            res.render('index', { role: undefined, error: "Registration failed. Email might be taken." });
+            console.error(err);
+            res.render('index', { role: undefined, error: "Registration failed." });
         } else {
-            // Auto login or redirect to login? Original redirects to index (login form)
+            if (IS_VERCEL) {
+                req.session.role = role;
+                req.session.username = username;
+                req.session.email = email;
+                return res.redirect('/checkproducts');
+            }
             res.render('index', { role: undefined, error: "Registration successful! Please login." });
         }
     });
@@ -158,24 +191,24 @@ app.get('/logout', (req, res) => {
     res.redirect('/');
 });
 
-// Basic placeholders for other pages to prevent 404
+
 app.get('/addproducts', (req, res) => {
     if (req.session.role === undefined) res.redirect('/');
-    else res.send("Add Products Page (Not fully ported yet, but auth works)");
+    else res.send("Add Products Page (Vercel Demo: Backend Logic Disabled)");
 });
 app.get('/scanshipment', (req, res) => {
     if (req.session.role === undefined) res.redirect('/');
-    else res.send("Ownership Transfer Page (Not fully ported yet)");
+    else res.send("Ownership Transfer Page (Vercel Demo: Backend Logic Disabled)");
 });
 app.get('/profile', (req, res) => {
     if (req.session.role === undefined) res.redirect('/');
-    else res.send("Profile Page (Not fully ported yet)");
+    else res.send("Profile Page (Vercel Demo: Backend Logic Disabled)");
 });
 
 
 // Start
 setupBlockchain().then(() => {
     app.listen(PORT, () => {
-        console.log(`Server running on http://localhost:${PORT}`);
+        console.log(`Server running on port ${PORT}`);
     });
 });

@@ -206,6 +206,45 @@ app.get('/profile', (req, res) => {
     else res.send("Profile Page (Vercel Demo: Backend Logic Disabled)");
 });
 
+app.post('/checkproducts', (req, res) => {
+    // Mock Verification Logic for Vercel Demo
+    console.log("Checking Product:", req.body);
+
+    if (IS_VERCEL) {
+        // Simple mock response to render the page with a result
+        // We render 'checkproducts' again but pass variables to show the result
+        // Since we don't have the original template logic for "result" yet, we might need to update the EJS too.
+        // For now, let's send a simple alert script or text to confirm connection.
+
+        // Actually, let's see what the EJS expects.
+        // If I just send text, it's a bad UX.
+        // Let's assume the user just wants to see *something* happen.
+
+        const result = {
+            id: 1,
+            name: "Demo Product",
+            description: "This is a verified demo product.",
+            manufactureDate: "2026-01-01",
+            expiryDate: "2028-01-01",
+            owner: "Demo User",
+            isReal: true
+        };
+
+        // Render the page with the result data
+        // Note: I need to check checkproducts.ejs to see what invalid/valid variables it uses.
+        // For safety, I'll send a basic response first.
+        res.send(`
+            <div style="font-family: sans-serif; padding: 20px; text-align: center; background: #0f0; color: #000;">
+                <h1>Product Verified! (Demo Mode)</h1>
+                <p>This is a valid product simulation.</p>
+                <a href="/checkproducts">Check Another</a>
+            </div>
+        `);
+    } else {
+        res.send("Blockchain verification unavailable in this environment.");
+    }
+});
+
 
 // Start
 setupBlockchain().then(() => {

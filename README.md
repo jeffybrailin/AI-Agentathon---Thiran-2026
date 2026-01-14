@@ -20,13 +20,7 @@ The prototype successfully demonstrates the core authentication flow. A live ver
 ### Live Demo
 [**Click Here to View Live Prototype**](https://ai-agentathon-thiran-2026-lfbs.vercel.app/)
 
-### Prototype Screenshots
 
-**Landing Page**
-![Landing Page](screenshots/landing.png)
-
-**Dashboard & Verification**
-![Dashboard](screenshots/dashboard.png)
 
 ## Tech Stack Used
 *   **Runtime**: Node.js

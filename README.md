@@ -14,10 +14,24 @@ This project was autonomously modernized and deployed by an **AI Agent**. The wo
 4.  **UI/UX Overhaul**: The Agent completely redesigned the frontend with a **"Cyber-Scanner" theme**, implementing 3D grid animations, glassmorphism, and a high-tech aesthetic using vanilla CSS.
 5.  **Deployment Prep**: The Agent finalized the prototype and prepared the repository for submission.
 
+## Results & Demo
+The prototype successfully demonstrates the core authentication flow. A live version is deployed on Vercel (running in "Lite Mode" with mocked blockchain for demonstration purposes).
+
+### Live Demo
+[**Click Here to View Live Prototype**](https://ai-agentathon-thiran-2026-lfbs.vercel.app/)
+
+### Prototype Screenshots
+
+**Landing Page**
+![Landing Page](screenshots/landing.png)
+
+**Dashboard & Verification**
+![Dashboard](screenshots/dashboard.png)
+
 ## Tech Stack Used
 *   **Runtime**: Node.js
 *   **Framework**: Express.js
-*   **Database**: SQLite (migrated from MySQL)
+*   **Database**: SQLite (Local), In-Memory Mock (Vercel)
 *   **Blockchain**: Ganache (Local Ethereum Testnet)
 *   **Smart Contracts**: Solidity (Compiled via `solc`)
 *   **Web3 Integration**: Web3.js
@@ -56,4 +70,4 @@ This project was autonomously modernized and deployed by an **AI Agent**. The wo
 
 ## Prototype Link
 *   **GitHub Repo**: [https://github.com/jeffybrailin/AI-Agentathon---Thiran-2026](https://github.com/jeffybrailin/AI-Agentathon---Thiran-2026)
-*   **Local Access**: [http://localhost:3000](http://localhost:3000)
+*   **Live Demo**: [https://ai-agentathon-thiran-2026-lfbs.vercel.app/](https://ai-agentathon-thiran-2026-lfbs.vercel.app/)
